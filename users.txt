@@ -1,0 +1,3 @@
+ruben direction /bin/bash /home/ruben
+raissa rh /bin/bash /home/raissa
+helene rh /bin/bash /home/helene
