@@ -7,14 +7,25 @@ backup_dir='/backup_users' # Dossier de sauvegarde des répertoires personnels
 # Boucle pour ajouter des utilisateurs
 while read line; do # Lire chaque ligne du fichier
     read -a array <<< "$line" # Convertir la ligne en tableau
-    if ! grep "^${array[0]}" /etc/group > /dev/null; then
-        addgroup ${array[1]} # Ajouter le groupe si inexistant
+    group_name=${array[1]} # Nom du groupe
+    username=${array[0]} # Nom de l'utilisateur
+    # Créer le groupe si inexistant
+    if ! grep "^$group_name" /etc/group > /dev/null; then
+        groupadd $group_name # Ajouter le groupe
+        echo "Groupe $group_name créé."
     fi
-    if ! grep "^${array[0]}" /etc/passwd > /dev/null; then
-        useradd ${array[0]} --groups ${array[1]} # Ajouter l'utilisateur si inexistant
+    # Ajouter l'utilisateur si inexistant
+    if ! grep "^$username" /etc/passwd > /dev/null; then
+        useradd -m $username --groups $group_name # Ajouter l'utilisateur
         password=$(openssl rand -base64 12) # Générer un mot de passe temporaire
-        chpasswd ${array[0]}:$password # Changer le mot de passe de l'utilisateur
-        echo "L'utilisateur ${array[0]} a été créé avec un mot de passe temporaire : $password"
+        echo "$username:$password" | chpasswd # Changer le mot de passe de l'utilisateur
+        usermod -aG "$group_name" "$username" # Changer le groupe principal
+        echo "L'utilisateur $username a été créé dans le groupe $group_name avec un mot de passe temporaire : $password"
+    fi
+    # L'utilisateur existe, vérifier s'il est dans le bon groupe
+    if ! id -Gn "$username" | grep -qw "$group_name"; then
+        usermod -aG "$group_name" "$username" # Ajouter l'utilisateur au groupe sans supprimer ses autres groupes
+        echo "L'utilisateur $username a été ajouté au groupe $group_name."
     fi
 done < "$user_file"
 
@@ -42,11 +53,22 @@ for user in $inactive_users; do
                 echo "Répertoire personnel de $user sauvegardé dans $backup_dir." 
             fi
             # Suppression de l'utilisateur
-            userdel -r "$user"
+            userdel -r -f "$user" # Supprimer l'utilisateur et son répertoire personnel
             echo -e "Le compte $user a été supprimé.\n"
         else
             echo -e "Aucune action prise pour $user.\n"
         fi
 done
 
-echo "Gestion des utilisateurs inactifs terminée."
+echo -e "Gestion des utilisateurs inactifs terminée.\n"
+
+# Suppression des groupes vides
+for group in $(cut -d: -f1 /etc/group); do
+    # Vérifier si le groupe est vide
+    members=$(members "$group")
+    exclusion_list=("root" "adm" "daemon" "bin" "sys" "sync" "games" "crontab" "backup" "src" "shadow" "utmp" "sasl" "staff" "admin" "nobody" "tty" "disk" "kmem" "fax" "voice" "tape" "operator" "input" "sgx" "kvm" "render" "_ssh" "")
+    if [ -z "$members" ] && [[ ! " ${exclusion_list[@]} " =~ " ${group} " ]]; then
+        groupdel "$group" # Supprimer le groupe s'il est vide
+        echo "Le groupe $group est vide et a été supprimé."
+    fi
+done
