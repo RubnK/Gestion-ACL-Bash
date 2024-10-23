@@ -3,6 +3,8 @@
 user_file='users.txt' # Fichier contenant les utilisateurs à ajouter
 inactive_days=90  # Période d'inactivité définie (en jours)
 backup_dir='/backup_users' # Dossier de sauvegarde des répertoires personnels
+shared_dirs=("/shared/rh" "/shared/direction") # Répertoires partagés où appliquer les ACL
+
 
 # Boucle pour ajouter des utilisateurs
 while read line; do # Lire chaque ligne du fichier
@@ -39,17 +41,21 @@ for user in $inactive_users; do
         echo "L'utilisateur $user est inactif depuis plus de $inactive_days jours."
         
         # Demander à l'administrateur s'il veut verrouiller ou supprimer le compte
-        echo "Souhaitez-vous verrouiller (l) ou supprimer (s) le compte $user ? (l/s/ignorer)"
+        echo "Souhaitez-vous verrouiller (v) ou supprimer (s) le compte $user ? (v/s/ignorer)"
         read -r choice
 
-        if [ "$choice" == "l" ]; then
+        if [ "$choice" == "v" ]; then
             usermod -L "$user" # Verrouiller le compte
             echo -e "Le compte $user a été verrouillé.\n"
         elif [ "$choice" == "s" ]; then
+            # Vérifier si le répertoire de sauvegarde existe, sinon le créer
+            if [ ! -d "$backup_dir" ]; then
+                mkdir -p "$backup_dir"
+            fi
             # Sauvegarde du répertoire personnel
             home_dir=$(getent passwd "$user" | cut -d: -f6) # Récupérer le répertoire personnel de l'utilisateur
             if [ -d "$home_dir" ]; then
-                tar -zczf "$backup_dir/${user}_home_backup.tar.gz" "$home_dir" # Créer une archive du répertoire personnel
+                tar -czf "$backup_dir/${user}_home_backup.tar.gz" "$home_dir" # Créer une archive du répertoire personnel
                 echo "Répertoire personnel de $user sauvegardé dans $backup_dir." 
             fi
             # Suppression de l'utilisateur
@@ -72,3 +78,29 @@ for group in $(cut -d: -f1 /etc/group); do
         echo "Le groupe $group est vide et a été supprimé."
     fi
 done
+
+# Gestion des permissions spécifiques via ACL
+echo "Configuration des permissions ACL sur les répertoires partagés..."
+
+for dir in "${shared_dirs[@]}"; do
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir" # Créer le répertoire s'il n'existe pas
+        echo "Répertoire $dir créé."
+    fi
+
+    if [ "$dir" == "/shared/rh" ]; then
+        # Permission de lecture seule pour le groupe RH
+        setfacl -m g:rh:rwx "$dir" # Autoriser uniquement la lecture et l'exécution pour le groupe RH
+        setfacl -d -m g:rh:rwx "$dir" # Appliquer cette règle par défaut aux nouveaux fichiers
+        setfacl -m g:direction:rwx "$dir" # Autoriser la lecture, l'écriture et l'exécution pour le groupe direction
+        setfacl -d -m g:direction:rwx "$dir" # Appliquer cette règle par défaut aux nouveaux fichiers
+        echo "Permissions attribuées pour le répertoire $dir."
+    elif [ "$dir" == "/shared/direction" ]; then
+        # Permissions de lecture et écriture pour le groupe direction
+        setfacl -m g:direction:rwx "$dir" # Autoriser la lecture, l'écriture et l'exécution pour le groupe direction
+        setfacl -d -m g:direction:rwx "$dir" # Appliquer cette règle par défaut aux nouveaux fichiers
+        echo "Permissions attribuées pour le répertoire $dir."
+    fi
+done
+
+echo -e "Permissions ACL configurées.\n"
