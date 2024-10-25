@@ -31,9 +31,9 @@ To use this script, you will need:
 
 4. Run the script with superuser rights:
 
-``bash
+```bash
 sudo ./script.sh
-``
+```
 
 
 
