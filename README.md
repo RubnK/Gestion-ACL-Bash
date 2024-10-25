@@ -1,5 +1,7 @@
 # User and Group Management with ACL
 
+**Authors : [@RubnK](https://github.com/RubnK), [@yayou05](https://github.com/yayou05) & [@len233](https://github.com/len233)**
+
 This Bash script automates user and group management on a Linux system. It simplifies the process of adding users, managing inactive accounts, and configuring Access Control Lists (ACL) for shared directories.
 
 ## Table of Contents
