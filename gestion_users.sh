@@ -21,6 +21,7 @@ while read line; do # Lire chaque ligne du fichier
         useradd -m $username --groups $group_name # Ajouter l'utilisateur
         password=$(openssl rand -base64 12) # Générer un mot de passe temporaire
         echo "$username:$password" | chpasswd # Changer le mot de passe de l'utilisateur
+        chage -d 0 $username # Forcer l'utilisateur à changer de mot de passe à la première connexion. 
         usermod -aG "$group_name" "$username" # Changer le groupe principal
         echo "L'utilisateur $username a été créé dans le groupe $group_name avec un mot de passe temporaire : $password"
     fi
