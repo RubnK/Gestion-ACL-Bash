@@ -44,7 +44,7 @@ backup_dir='/backup_users' # Directory where deleted user data will be backed up
 shared_dirs=('/shared_dir1' '/shared_dir2') # List of directories for ACL configuration
 ```
 
-Features
+## Features
 
 Automatically creates users and groups based on the users.txt input file.
 
@@ -59,7 +59,7 @@ Removes empty groups automatically, ensuring a clean user environment.
 Applies ACL permissions on specified shared directories for enhanced security.
 
 
-Parameters
+## Parameters
 
 **users.txt**: A file containing user details formatted as <username> <group_name> <shell> <home_directory>.
 
@@ -70,6 +70,6 @@ Parameters
 **shared_dirs**: A list of directories where ACL permissions will be set.
 
 
-Contributing
+## Contributing
 
 Feel free to contribute to the project by submitting issues or pull requests.
